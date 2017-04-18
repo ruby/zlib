@@ -2,8 +2,8 @@
 Gem::Specification.new do |spec|
   spec.name          = "zlib"
   spec.version       = "0.0.1"
-  spec.authors       = ["Yukihiro Matsumoto"]
-  spec.email         = ["matz@ruby-lang.org"]
+  spec.authors       = ["Yukihiro Matsumoto", "UENO Katsuhiro"]
+  spec.email         = ["matz@ruby-lang.org", nil]
 
   spec.summary       = %q{Ruby interface for the zlib compression/decompression library}
   spec.description   = %q{Ruby interface for the zlib compression/decompression library}
