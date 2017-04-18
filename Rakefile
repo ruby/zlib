@@ -7,4 +7,7 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList['test/**/*_test.rb']
 end
 
-task :default => :test
+require 'rake/extensiontask'
+Rake::ExtensionTask.new("zlib")
+
+task :default => [:compile, :test]
