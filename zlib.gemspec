@@ -2,7 +2,8 @@
 # frozen_string_literal: true
 Gem::Specification.new do |spec|
   spec.name          = "zlib"
-  spec.version       = "0.0.1"
+  spec.version       = "0.1.0"
+  spec.date          = '2017-09-13'
   spec.authors       = ["Yukihiro Matsumoto", "UENO Katsuhiro"]
   spec.email         = ["matz@ruby-lang.org", nil]
 
