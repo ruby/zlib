@@ -1057,6 +1057,14 @@ if defined? Zlib
       }
     end
 
+    def test_puts
+      Tempfile.create("test_zlib_gzip_writer_puts") {|t|
+        t.close
+        Zlib::GzipWriter.open(t.path) {|gz| gz.puts("foo") }
+        assert_equal("foo\n", Zlib::GzipReader.open(t.path) {|gz| gz.read })
+      }
+    end
+
     def test_writer_wrap
       Tempfile.create("test_zlib_gzip_writer_wrap") {|t|
         t.binmode
@@ -1195,6 +1203,14 @@ if defined? Zlib
 
       src = %w[1f8b080000000000000].pack("H*")
       assert_raise(Zlib::GzipFile::Error){ Zlib.gunzip(src) }
+    end
+
+    def test_gunzip_no_memory_leak
+      assert_no_memory_leak(%[-rzlib], "#{<<~"{#"}", "#{<<~'};'}")
+      d = Zlib.gzip("data")
+      {#
+        10_000.times {Zlib.gunzip(d)}
+      };
     end
   end
 end
