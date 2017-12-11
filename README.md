@@ -1,5 +1,7 @@
 # Zlib
 
+[![Build Status](https://travis-ci.org/ruby/zlib.svg?branch=master)](https://travis-ci.org/ruby/zlib)
+
 This module provides access to the {zlib library}[http://zlib.net]. Zlib is designed to be a portable, free, general-purpose, legally unencumbered -- that is, not covered by any patents -- lossless data-compression library for use on virtually any computer hardware and operating system.
 
 The zlib compression library provides in-memory compression and decompression functions, including integrity checks of the uncompressed data.
