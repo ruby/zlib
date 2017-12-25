@@ -34,7 +34,7 @@ Or install it yourself as:
 
 Using the wrapper to compress strings with default parameters is quite simple:
 
-```
+```ruby
 require "zlib"
 
 data_to_compress = File.read("don_quixote.txt")
