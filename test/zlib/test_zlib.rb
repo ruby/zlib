@@ -1085,6 +1085,10 @@ if defined? Zlib
 
   class TestZlib < Test::Unit::TestCase
     def test_version
+      assert_instance_of(String, Zlib::VERSION)
+    end
+
+    def test_zlib_version
       assert_instance_of(String, Zlib.zlib_version)
       assert(Zlib.zlib_version.tainted?)
     end
