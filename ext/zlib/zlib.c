@@ -25,8 +25,6 @@
 # define VALGRIND_MAKE_MEM_UNDEFINED(p, n) 0
 #endif
 
-#define RUBY_ZLIB_VERSION  "1.0.0"
-
 #ifndef GZIP_SUPPORT
 #define GZIP_SUPPORT  1
 #endif
@@ -4489,8 +4487,6 @@ Init_zlib(void)
     rb_define_module_function(mZlib, "crc32_combine", rb_zlib_crc32_combine, 3);
     rb_define_module_function(mZlib, "crc_table", rb_zlib_crc_table, 0);
 
-    /* The Ruby/zlib version string. */
-    rb_define_const(mZlib, "VERSION", rb_str_new2(RUBY_ZLIB_VERSION));
     /*  The string which represents the version of zlib.h */
     rb_define_const(mZlib, "ZLIB_VERSION", rb_str_new2(ZLIB_VERSION));
 

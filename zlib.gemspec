@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/ruby/zlib"
   spec.license       = "BSD-2-Clause"
 
-  spec.files         = [".gitignore", ".travis.yml", "Gemfile", "LICENSE.txt", "README.md", "Rakefile", "bin/console", "bin/setup", "ext/zlib/extconf.rb", "ext/zlib/zlib.c", "zlib.gemspec"]
+  spec.files         = [".gitignore", ".travis.yml", "Gemfile", "LICENSE.txt", "README.md", "Rakefile", "bin/console", "bin/setup", "ext/zlib/extconf.rb", "ext/zlib/zlib.c", "lib/zlib.rb", "lib/zlib/version.rb", "zlib.gemspec"]
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]

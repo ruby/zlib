@@ -122,7 +122,7 @@ if have_zlib
     have_type('z_crc_t', 'zlib.h')
   end
 
-  create_makefile('zlib') {|conf|
+  create_makefile('zlib/zlib') {|conf|
     if zsrc
       conf.concat addconf if addconf
     end

@@ -8,6 +8,8 @@ Rake::TestTask.new(:test) do |t|
 end
 
 require 'rake/extensiontask'
-Rake::ExtensionTask.new("zlib")
+Rake::ExtensionTask.new("zlib") do |ext|
+  ext.lib_dir = "lib/zlib"
+end
 
 task :default => [:compile, :test]
