@@ -1,8 +1,16 @@
 # coding: utf-8
 # frozen_string_literal: true
+
+begin
+  require_relative "lib/zlib/version"
+rescue LoadError
+  # for Ruby core repository
+  require_relative "version"
+end
+
 Gem::Specification.new do |spec|
   spec.name          = "zlib"
-  spec.version       = "1.0.0"
+  spec.version       = Zlib::VERSION
   spec.authors       = ["Yukihiro Matsumoto", "UENO Katsuhiro"]
   spec.email         = ["matz@ruby-lang.org", nil]
 
