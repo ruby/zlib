@@ -1,4 +1,6 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in zlib.gemspec
-gemspec
+gem "rake"
+gem "rake-compiler"
+
+# Do not use `gemspec' to avoid a gem requirement on the local project.
