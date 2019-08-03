@@ -1,6 +1,8 @@
 # coding: utf-8
 # frozen_string_literal: true
-source_version = File.open(File.join(__dir__, "zlib.c")) {|f|
+zlibc = File.join(__dir__, "zlib.c")
+zlibc = File.join(__dir__, "ext", "zlib", "zlib.c") unless File.exist?(zlibc)
+source_version = File.open(zlibc) {|f|
   f.gets("\n#define RUBY_ZLIB_VERSION ")
   f.gets[/\s*(".+")/, 1].undump
 }
