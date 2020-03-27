@@ -1,4 +1,4 @@
-name: ubuntu
+name: test
 
 on: [push, pull_request]
 
@@ -7,15 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: [ '2.6.x', '2.5.x', '2.4.x' ]
+        ruby: [ 2.6, 2.5, 2.4, head ]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
     - name: Install packages
       run: |
         sudo apt update -qy
         sudo apt install zlib1g-dev
     - name: Set up Ruby
-      uses: actions/setup-ruby@v1
+      uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
     - name: Set up Bundler
