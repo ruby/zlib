@@ -407,6 +407,16 @@ do_checksum(int argc, VALUE *argv, uLong (*func)(uLong, const Bytef*, uInt))
     if (NIL_P(str)) {
 	sum = func(sum, Z_NULL, 0);
     }
+    else if (rb_obj_is_kind_of(str, rb_cIO)) {
+        VALUE buf;
+        VALUE buflen = INT2NUM(8192);
+        ID meth = rb_intern("read");
+
+        while (!NIL_P(buf = rb_funcall(str, meth, 1, buflen))) {
+            StringValue(buf);
+            sum = checksum_long(func, sum, (Bytef*)RSTRING_PTR(buf), RSTRING_LEN(buf));
+        }
+    }
     else {
 	StringValue(str);
 	sum = checksum_long(func, sum, (Bytef*)RSTRING_PTR(str), RSTRING_LEN(str));
@@ -422,6 +432,8 @@ do_checksum(int argc, VALUE *argv, uLong (*func)(uLong, const Bytef*, uInt))
  * Calculates Adler-32 checksum for +string+, and returns updated value of
  * +adler+. If +string+ is omitted, it returns the Adler-32 initial value. If
  * +adler+ is omitted, it assumes that the initial value is given to +adler+.
+ * If +string+ is an IO instance, reads from the IO until the IO returns nil
+ * and returns Adler-32 of all read data.
  *
  * Example usage:
  *
@@ -466,7 +478,9 @@ rb_zlib_adler32_combine(VALUE klass, VALUE adler1, VALUE adler2, VALUE len2)
  *
  * Calculates CRC checksum for +string+, and returns updated value of +crc+. If
  * +string+ is omitted, it returns the CRC initial value. If +crc+ is omitted, it
- * assumes that the initial value is given to +crc+.
+ * assumes that the initial value is given to +crc+. If +string+ is an IO instance,
+ * reads from the IO until the IO returns nil and returns CRC checksum of all read
+ * data.
  *
  * FIXME: expression.
  */
