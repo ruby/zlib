@@ -56,7 +56,7 @@ max_uint(long n)
 #define MAX_UINT(n) (uInt)(n)
 #endif
 
-static ID id_dictionaries;
+static ID id_dictionaries, id_read;
 
 /*--------- Prototypes --------*/
 
@@ -410,9 +410,8 @@ do_checksum(int argc, VALUE *argv, uLong (*func)(uLong, const Bytef*, uInt))
     else if (rb_obj_is_kind_of(str, rb_cIO)) {
         VALUE buf;
         VALUE buflen = INT2NUM(8192);
-        ID meth = rb_intern("read");
 
-        while (!NIL_P(buf = rb_funcall(str, meth, 1, buflen))) {
+        while (!NIL_P(buf = rb_funcall(str, id_read, 1, buflen))) {
             StringValue(buf);
             sum = checksum_long(func, sum, (Bytef*)RSTRING_PTR(buf), RSTRING_LEN(buf));
         }
@@ -2212,7 +2211,7 @@ rb_inflate_set_dictionary(VALUE obj, VALUE dic)
 #define OS_CODE  OS_UNIX
 #endif
 
-static ID id_write, id_read, id_readpartial, id_flush, id_seek, id_close, id_path, id_input;
+static ID id_write, id_readpartial, id_flush, id_seek, id_close, id_path, id_input;
 static VALUE cGzError, cNoFooter, cCRCError, cLengthError;
 
 
