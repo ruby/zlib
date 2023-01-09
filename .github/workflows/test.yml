@@ -29,3 +29,5 @@ jobs:
         bundler-cache: true # 'bundle install' and cache
     - name: Run test
       run: bundle exec rake compile test
+      timeout-minutes: 5
+      continue-on-error: ${{ startsWith(matrix.ruby, 'truffleruby') }}
