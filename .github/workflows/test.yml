@@ -6,7 +6,7 @@ jobs:
   ruby-versions:
     uses: ruby/actions/.github/workflows/ruby_versions.yml@master
     with:
-      engine: cruby-truffleruby
+      engine: cruby
       min_version: 2.7
 
   build:
@@ -24,10 +24,6 @@ jobs:
         exclude:
           - ruby: head
             os: windows-latest
-          - ruby: truffleruby
-            os: windows-latest
-          - ruby: truffleruby-head
-            os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -39,4 +35,3 @@ jobs:
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
-      continue-on-error: ${{ startsWith(matrix.ruby, 'truffleruby') }}
