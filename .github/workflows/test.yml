@@ -3,11 +3,18 @@ name: test
 on: [push, pull_request]
 
 jobs:
+  ruby-versions:
+    uses: ruby/actions/.github/workflows/ruby_versions.yml@master
+    with:
+      engine: cruby
+      min_version: 2.7
+
   build:
+    needs: ruby-versions
     name: build (${{ matrix.ruby }} / ${{ matrix.os }})
     strategy:
       matrix:
-        ruby: [ 3.1, '3.0', 2.7, head, truffleruby-head ]
+        ruby: ${{ fromJson(needs.ruby-versions.outputs.versions) }}
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         include:
           - ruby: mswin
@@ -16,8 +23,6 @@ jobs:
             os: windows-latest
         exclude:
           - ruby: head
-            os: windows-latest
-          - ruby: truffleruby-head
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,4 +35,3 @@ jobs:
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
-      continue-on-error: ${{ startsWith(matrix.ruby, 'truffleruby') }}
