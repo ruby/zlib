@@ -7,6 +7,7 @@ jobs:
     uses: ruby/actions/.github/workflows/ruby_versions.yml@master
     with:
       engine: cruby
+      versions: '["truffleruby-head"]'
       min_version: 2.7
 
   build:
@@ -23,6 +24,8 @@ jobs:
             os: windows-latest
         exclude:
           - ruby: head
+            os: windows-latest
+          - ruby: truffleruby-head
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
