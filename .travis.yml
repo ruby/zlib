@@ -1,0 +1,5 @@
+dist: jammy
+language: ruby
+matrix:
+  include:
+    - arch: s390x
