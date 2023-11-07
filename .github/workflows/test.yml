@@ -8,7 +8,7 @@ jobs:
     with:
       engine: cruby
       versions: '["truffleruby-head"]'
-      min_version: 2.7
+      min_version: 2.5
 
   build:
     needs: ruby-versions
