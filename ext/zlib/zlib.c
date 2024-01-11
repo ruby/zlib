@@ -592,6 +592,7 @@ struct zstream {
 #define ZSTREAM_REUSE_BUFFER_P(z)     ((z)->flags & ZSTREAM_REUSE_BUFFER)
 
 #define ZSTREAM_EXPAND_BUFFER_OK          0
+#define ZSTREAM_THREAD_INTERRUPTED        9
 
 /* I think that more better value should be found,
    but I gave up finding it. B) */
@@ -1019,7 +1020,7 @@ zstream_run_func(void *ptr)
     uInt n;
 
     err = Z_OK;
-    while (!args->interrupt) {
+    while (1) {
 	n = z->stream.avail_out;
 	err = z->func->run(&z->stream, flush);
 	rb_str_set_len(z->buf, ZSTREAM_BUF_FILLED(z) + (n - z->stream.avail_out));
@@ -1059,6 +1060,11 @@ zstream_run_func(void *ptr)
 	    args->jump_state = state;
 	    break;
 	}
+
+    if (args->interrupt) {
+        err = ZSTREAM_THREAD_INTERRUPTED;
+        break;
+    }
     }
 
     return (void *)(VALUE)err;
@@ -1118,7 +1124,7 @@ loop:
 #endif
 
     /* retry if no exception is thrown */
-    if (err == Z_OK && args->interrupt) {
+    if (err == ZSTREAM_THREAD_INTERRUPTED) {
        args->interrupt = 0;
        goto loop;
     }

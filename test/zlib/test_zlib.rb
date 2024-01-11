@@ -1473,5 +1473,42 @@ if defined? Zlib
         10_000.times {Zlib.gunzip(d)}
       };
     end
+
+    def test_gzip_thread_interrupts
+      content = Random.bytes(5000)
+      stop = false
+      ret = nil
+
+      thr = Thread.new do
+        until stop
+          ret = Zlib.gzip(content)
+        end
+      end
+
+      10000000.times { thr.wakeup }
+      stop = true
+      thr.join
+
+      assert_equal content, Zlib.gunzip(ret)
+    end
+
+    def test_gzipreader_thread_interrupts
+      content = Random.bytes(5000).b
+      gzipped = Zlib.gzip(content)
+      stop = false
+      ret = nil
+
+      thr = Thread.new do
+        until stop
+          ret = Zlib::GzipReader.new(StringIO.new(gzipped), encoding: Encoding::BINARY).read
+        end
+      end
+
+      10000000.times { thr.wakeup }
+      stop = true
+      thr.join
+
+      assert_equal content, ret
+    end
   end
 end
