@@ -1475,7 +1475,7 @@ if defined? Zlib
     end
 
     def test_gzip_thread_interrupts
-      content = Random.bytes(5000)
+      content = SecureRandom.random_bytes(5000)
       stop = false
       ret = nil
 
@@ -1493,7 +1493,7 @@ if defined? Zlib
     end
 
     def test_gzipreader_thread_interrupts
-      content = Random.bytes(5000).b
+      content = SecureRandom.random_bytes(5000)
       gzipped = Zlib.gzip(content)
       stop = false
       ret = nil
