@@ -27,6 +27,8 @@ jobs:
             os: windows-latest
           - ruby: truffleruby-head
             os: windows-latest
+          - ruby: truffleruby-head
+            os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
