@@ -2965,6 +2965,7 @@ gzfile_read_all(struct gzfile *gz)
     return gzfile_newstr(gz, dst);
 }
 
+__attribute__((__noinline__))
 static VALUE
 gzfile_getc_dummy_encoding(struct gzfile *gz)
 {
