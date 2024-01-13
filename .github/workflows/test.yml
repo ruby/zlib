@@ -39,3 +39,5 @@ jobs:
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
+      env:
+        TESTOPTS: "--verbose"
