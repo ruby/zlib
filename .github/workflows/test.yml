@@ -36,8 +36,15 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true # 'bundle install' and cache
+    - run: env | sort
+    - run: |
+        cc -xc -E - <<EOF
+        #include <dlfcn.h>
+        foo(RTLD_LAZY, RTLD_NOW, RTLD_LOCAL, RTLD_GLOBAL);
+        EOF
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
       env:
         TESTOPTS: "--verbose"
+        TRUFFLERUBYOPT: "--experimental-options --cexts-log-load"
