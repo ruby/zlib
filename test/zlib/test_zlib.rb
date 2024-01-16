@@ -1205,6 +1205,69 @@ if defined? Zlib
       }
     end
 
+    # Test boundary cases around compressed data where the "final" deflate block is empty,
+    # and close to a Zlib::GzipFile::READ_SIZE boundary
+    [(Zlib::GzipFile::READ_SIZE - 30)..(Zlib::GzipFile::READ_SIZE - 10), (Zlib::GzipFile::READ_SIZE * 2 - 30)..(Zlib::GzipFile::READ_SIZE * 2 - 10)].flat_map(&:to_a).each do |size|
+      contents = "a\n" * (size / 2)
+      contents << "\n" if size.odd?
+      contents.freeze
+
+      s = StringIO.new
+      gz = Zlib::GzipWriter.new(s, Zlib::NO_COMPRESSION)
+      gz.write contents
+      gz.flush
+      gz.close
+      s = s.string.freeze
+
+      sub_test_case("String of length #{size}") do
+        [[:readpartial, 500], [:readpartial, 1024], [:readpartial, 2028], [:gets], [:getc], [:getbyte], [:read], [:read, 500], [:read, 1024], [:read, 2048], [:readline], [:readlines], [:readbyte], [:readchar]].each do |method, *args|
+          test("#{method}(#{args.join(', ')})") do
+            read = "".b
+            Zlib::GzipReader.wrap(StringIO.new(s)) do |gzio|
+              until gzio.eof?
+                part = gzio.send(method, *args)
+                refute_nil part
+                case part
+                when Array then part.each { |e| read << e }
+                else read << part
+                end
+              end
+              assert_predicate gzio, :eof?
+
+              case method
+              when :readbyte, :getbyte
+                b = read.bytes.last
+                gzio.ungetbyte b
+                refute_predicate gzio, :eof?
+                assert_equal b, gzio.send(method, *args)
+                assert_predicate gzio, :eof?
+              when :readchar, :getc
+                c = read[-1]
+                gzio.ungetc c
+                refute_predicate gzio, :eof?
+                assert_equal c, gzio.send(method, *args)
+                assert_predicate gzio, :eof?
+              end
+
+              2.times do
+                case method
+                when :readpartial, :readbyte, :readchar, :readline
+                  assert_raise(EOFError) { gzio.send(method, *args) }
+                when :readlines
+                  assert_equal [], gzio.send(method, *args)
+                when ->(m) { m == :read && args.empty? }
+                  assert_equal "", gzio.send(method, *args)
+                else
+                  assert_nil gzio.send(method, *args)
+                end
+                assert_predicate gzio, :eof?
+              end
+            end
+            assert_equal contents, read
+          end
+        end
+      end
+    end
   end
 
   class TestZlibGzipWriter < Test::Unit::TestCase

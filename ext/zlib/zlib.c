@@ -3500,6 +3500,14 @@ static VALUE
 rb_gzfile_eof_p(VALUE obj)
 {
     struct gzfile *gz = get_gzfile(obj);
+
+    // Similar to Socket/Pipe, we need to check if there is any actual data left,
+    // as it is possible that the stream is not finished, but there is no data that
+    // would be returned upon reading, so we want to report eof? in that case
+    while (!ZSTREAM_IS_FINISHED(&gz->z) && ZSTREAM_BUF_FILLED(&gz->z) == 0) {
+        gzfile_read_more(gz, Qnil);
+    }
+
     return GZFILE_IS_FINISHED(gz) ? Qtrue : Qfalse;
 }
 
@@ -4829,6 +4837,9 @@ Init_zlib(void)
     /* input gzipped string */
     rb_define_attr(cGzError, "input", 1, 0);
     rb_define_method(cGzError, "inspect", gzfile_error_inspect, 0);
+
+    /* The block size in bytes that the gzip file reads from its underlying io */
+    rb_define_const(cGzipFile, "READ_SIZE", INT2FIX(GZFILE_READ_SIZE));
 
     cNoFooter = rb_define_class_under(cGzipFile, "NoFooter", cGzError);
     cCRCError = rb_define_class_under(cGzipFile, "CRCError", cGzError);
