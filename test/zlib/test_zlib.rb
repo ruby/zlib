@@ -1208,8 +1208,7 @@ if defined? Zlib
     # Test boundary cases around compressed data where the "final" deflate block is empty,
     # and close to a Zlib::GzipFile::READ_SIZE boundary
     [(Zlib::GzipFile::READ_SIZE - 30)..(Zlib::GzipFile::READ_SIZE - 10), (Zlib::GzipFile::READ_SIZE * 2 - 30)..(Zlib::GzipFile::READ_SIZE * 2 - 10)].flat_map(&:to_a).each do |size|
-      contents = "a\n" * (size / 2)
-      contents << "\n" if size.odd?
+      contents = "a\n" * ((size + 1) / 2)
       contents.freeze
 
       s = StringIO.new
