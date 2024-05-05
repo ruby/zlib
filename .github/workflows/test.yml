@@ -24,6 +24,8 @@ jobs:
           - ruby: mingw
             os: windows-latest
         exclude:
+          - ruby: 2.5
+            os: macos-latest
           - ruby: head
             os: windows-latest
           - ruby: truffleruby-head
