@@ -590,8 +590,8 @@ rb_zlib_crc32c(int argc, VALUE *argv, VALUE klass)
 }
 
 /*
- * The following CRC32C code was adapted from the CRC32 code in zlib, including
- * the surrounding functions.
+ * The following CRC32C code was adapted from a fork of the CRC32 code in zlib,
+ * including the surrounding functions.
  * https://github.com/luvit/zlib/blob/8de57bce969eb9dafc1f1f5c256ac608d0a73ec4/crc32.c#L355
  */
 #define GF2_DIM 32      /* dimension of GF(2) vectors (length of CRC) */
