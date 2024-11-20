@@ -2260,7 +2260,6 @@ rb_inflate_inflate(int argc, VALUE* argv, VALUE obj)
 {
     struct zstream *z = get_zstream(obj);
     struct rb_zlib_inflate_arguments arguments = {z, argc, argv};
-    
     return rb_mutex_synchronize(z->mutex, rb_inflate_inflate_body, (VALUE)&arguments);
 }
 
