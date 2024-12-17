@@ -35,8 +35,28 @@ jobs:
           bundler-cache: true
           ruby-version: ruby
 
-      - name: Publish to RubyGems
-        uses: rubygems/release-gem@9e85cb11501bebc2ae661c1500176316d3987059 # v1.1.0
+      - name: Set remote URL
+        run: |
+          # Attribute commits to the last committer on HEAD
+          git config --global user.email "$(git log -1 --pretty=format:'%ae')"
+          git config --global user.name "$(git log -1 --pretty=format:'%an')"
+          git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY"
+        shell: bash
+
+      - name: Configure trusted publishing credentials
+        uses: rubygems/configure-rubygems-credentials@v1.0.0
+
+      - name: Install dependencies
+        run: gem install rake-compiler
+        shell: bash
+
+      - name: Run release rake task
+        run: rake release
+        shell: bash
+
+      - name: Wait for release to propagate
+        run: gem exec rubygems-await pkg/*.gem
+        shell: bash
 
       - name: Create GitHub release
         run: |
