@@ -41,3 +41,17 @@ jobs:
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
+
+  build-jruby:
+    name: build jruby
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: jruby-10
+        bundler-cache: true # 'bundle install' and cache
+    - name: Run test
+      run: bundle exec rake compile test
+      timeout-minutes: 5
