@@ -10,3 +10,4 @@
 *.bundle
 *.so
 *.dll
+/ext/java/lib/zlib.jar
