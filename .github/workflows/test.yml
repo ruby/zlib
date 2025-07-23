@@ -42,7 +42,8 @@ jobs:
       run: bundle exec rake compile test
       timeout-minutes: 5
 
-  test2:
+  build-ibm:
+    if: github.repository == 'ruby/zlib'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
