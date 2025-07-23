@@ -41,3 +41,23 @@ jobs:
     - name: Run test
       run: bundle exec rake compile test
       timeout-minutes: 5
+
+  test2:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-ppc64le
+          - os: ubuntu-24.04-s390x
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby
+        run: |
+          sudo apt-get update
+          sudo apt-get install ruby-full bundler zlib1g-dev
+      - name: Install dependencies
+        run: sudo bundle install --jobs 2
+      - name: Run test
+        run: bundle exec rake compile test
+        timeout-minutes: 5
