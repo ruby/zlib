@@ -32,7 +32,7 @@ jobs:
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
@@ -52,7 +52,7 @@ jobs:
           - os: ubuntu-24.04-ppc64le
           - os: ubuntu-24.04-s390x
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Ruby
         run: |
           sudo apt-get update
