@@ -5,7 +5,7 @@ if RUBY_PLATFORM.include?("s390x")
   # Avoid possible test failures with the zlib applying the following patch on
   # s390x CPU architecture.
   # https://github.com/madler/zlib/pull/410
-  # ENV["DFLTCC"] = "0"
+  ENV["DFLTCC"] = "0"
 end
 
 desc "Run tests"
