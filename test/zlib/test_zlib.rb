@@ -1445,6 +1445,54 @@ if defined? Zlib
       t.each {|x| assert_kind_of(Integer, x) }
     end
 
+    def test_crc32_table
+      t = Zlib.crc32_table
+      assert_instance_of(Array, t)
+      t.each {|x| assert_kind_of(Integer, x) }
+    end
+
+    def test_crc32c
+      assert_equal(0x00000000, Zlib.crc32c)
+      assert_equal(0xcfc4ae1d, Zlib.crc32c("foo"))
+      assert_equal(0xcfc4ae1d, Zlib.crc32c("o", Zlib.crc32c("fo")))
+      assert_equal(0x88a0fa6c, Zlib.crc32c("abc\x01\x02\x03" * 10000))
+      assert_equal(0x75349366, Zlib.crc32c("p", -305419897))
+      Tempfile.create("test_zlib_gzip_file_to_io") {|t|
+        File.binwrite(t.path, "foo")
+        t.rewind
+        assert_equal(0xcfc4ae1d, Zlib.crc32c(t))
+
+        t.rewind
+        crc = Zlib.crc32c(t.read(2))
+        assert_equal(0xcfc4ae1d, Zlib.crc32c(t, crc))
+
+        File.binwrite(t.path, "abc\x01\x02\x03" * 10000)
+        t.rewind
+        assert_equal(0x88a0fa6c, Zlib.crc32c(t))
+      }
+    end
+
+    def test_crc32c_combine
+      one = Zlib.crc32c("fo")
+      two = Zlib.crc32c("o")
+      begin
+        assert_equal(0xcfc4ae1d, Zlib.crc32c_combine(one, two, 1))
+      rescue NotImplementedError
+        omit "crc32_combine is not implemented"
+      rescue Test::Unit::AssertionFailedError
+        if /aix/ =~ RUBY_PLATFORM
+          omit "zconf.h in zlib does not handle _LARGE_FILES in AIX. Skip until it is fixed"
+        end
+        raise $!
+      end
+    end
+
+    def test_crc32c_table
+      t = Zlib.crc32c_table
+      assert_instance_of(Array, t)
+      t.each {|x| assert_kind_of(Integer, x) }
+    end
+
     def test_inflate
       s = Zlib::Deflate.deflate("foo")
       z = Zlib::Inflate.new
