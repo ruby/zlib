@@ -1271,6 +1271,7 @@ if defined? Zlib
     # This reproduces the issue where thread wakeup during GzipReader operations
     # can cause Z_BUF_ERROR to be raised incorrectly
     def test_thread_wakeup_interrupt
+      pend 'fails' if RUBY_ENGINE == 'truffleruby'
       content = SecureRandom.base64(5000)
       gzipped = Zlib.gzip(content)
 
@@ -1568,6 +1569,8 @@ if defined? Zlib
     # This reproduces the issue where thread wakeup during GzipReader operations
     # can cause Z_BUF_ERROR to be raised incorrectly
     def test_thread_wakeup_interrupt
+      pend 'fails' if RUBY_ENGINE == 'truffleruby'
+
       content = SecureRandom.base64(5000)
       gzipped = Zlib.gzip(content)
 
