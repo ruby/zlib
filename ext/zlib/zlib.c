@@ -609,7 +609,7 @@ static const struct zstream_funcs inflate_funcs = {
 };
 
 struct zstream_run_args {
-    struct zstream *const z;
+    struct zstream *z;
     Bytef *src;
     long len;
     int flush;         /* stream flush value for inflate() or deflate() */
@@ -1227,15 +1227,15 @@ zstream_run_ensure(VALUE value_arg)
 static void
 zstream_run(struct zstream *z, Bytef *src, long len, int flush)
 {
-    struct zstream_run_args args = {
-        .z = z,
-        .src = src,
-        .len = len,
-        .flush = flush,
-        .interrupt = 0,
-        .jump_state = 0,
-        .stream_output = !ZSTREAM_IS_GZFILE(z) && rb_block_given_p(),
-    };
+    struct zstream_run_args args;
+
+    args.z = z;
+    args.src = src;
+    args.len = len;
+    args.flush = flush;
+    args.interrupt = 0;
+    args.jump_state = 0;
+    args.stream_output = !ZSTREAM_IS_GZFILE(z) && rb_block_given_p();
 
     rb_ensure(zstream_run_try, (VALUE)&args, zstream_run_ensure, (VALUE)&args);
     if (args.jump_state)
