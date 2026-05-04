@@ -44,7 +44,7 @@ jobs:
         shell: bash
 
       - name: Configure trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@v1.0.0
+        uses: rubygems/configure-rubygems-credentials@v2.0.0
 
       - name: Install dependencies
         run: gem install rake-compiler
