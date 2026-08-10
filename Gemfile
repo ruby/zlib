@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 gemspec
 
 gem "bundler"
-gem "fiddle"
+gem "fiddle" if RUBY_VERSION.start_with?("4")
 gem "test-unit"
 gem "test-unit-ruby-core"
 gem "rake"
