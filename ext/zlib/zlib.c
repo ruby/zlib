@@ -1945,7 +1945,8 @@ rb_deflate_params(VALUE obj, VALUE v_level, VALUE v_strategy)
     if (err != Z_OK) {
 	raise_zlib_error(err, z->stream.msg);
     }
-    rb_str_set_len(z->buf, RSTRING_LEN(z->buf) + filled);
+    if (!NIL_P(z->buf))
+	rb_str_set_len(z->buf, RSTRING_LEN(z->buf) + filled);
 
     return Qnil;
 }
