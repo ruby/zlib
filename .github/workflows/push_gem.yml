@@ -46,12 +46,8 @@ jobs:
       - name: Configure trusted publishing credentials
         uses: rubygems/configure-rubygems-credentials@v2.1.0
 
-      - name: Install dependencies
-        run: gem install rake-compiler
-        shell: bash
-
       - name: Run release rake task
-        run: rake release
+        run: bundle exec rake release
         shell: bash
 
       - name: Wait for release to propagate
