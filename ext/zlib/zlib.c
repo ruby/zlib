@@ -2750,7 +2750,7 @@ gzfile_make_header(struct gzfile *gz)
     gzfile_set32((unsigned long)gz->mtime, &buf[4]);
     buf[8] = extraflags;
     buf[9] = gz->os_code;
-    zstream_append_buffer(&gz->z, buf, (rb_len_t)sizeof(buf));
+    zstream_append_buffer(&gz->z, buf, (long)sizeof(buf));
 
     if (!NIL_P(gz->orig_name)) {
 	zstream_append_buffer2(&gz->z, gz->orig_name);
@@ -2771,7 +2771,7 @@ gzfile_make_footer(struct gzfile *gz)
 
     gzfile_set32(gz->crc, buf);
     gzfile_set32(gz->z.stream.total_in, &buf[4]);
-    zstream_append_buffer(&gz->z, buf, (rb_len_t)sizeof(buf));
+    zstream_append_buffer(&gz->z, buf, (long)sizeof(buf));
     gz->z.flags |= GZFILE_FLAG_FOOTER_FINISHED;
 }
 
