@@ -14,6 +14,8 @@
 
 #ifndef HAVE_RB_LEN_T
 typedef long rb_len_t;
+typedef unsigned long rb_ulen_t;
+# define SIZEOF_RB_LEN_T SIZEOF_LONG
 # define NUM2LEN NUM2LONG
 # define PRIdLEN "ld"
 #endif
@@ -58,9 +60,9 @@ typedef uLong (*checksum_func)(uLong, const Bytef*, z_size_t);
 typedef uLong (*checksum_func)(uLong, const Bytef*, uInt);
 #endif
 
-#if SIZEOF_LONG > SIZEOF_INT
+#if SIZEOF_RB_LEN_T > SIZEOF_INT
 static inline uInt
-max_uint(long n)
+max_uint(rb_len_t n)
 {
     if (n > UINT_MAX) n = UINT_MAX;
     return (uInt)n;
@@ -92,12 +94,12 @@ struct zstream_funcs;
 struct zstream_run_args;
 static void zstream_init(struct zstream*, const struct zstream_funcs*);
 static void zstream_expand_buffer(struct zstream*);
-static void zstream_expand_buffer_into(struct zstream*, unsigned long);
+static void zstream_expand_buffer_into(struct zstream*, rb_ulen_t);
 static int zstream_expand_buffer_non_stream(struct zstream *z);
 static void zstream_append_buffer(struct zstream*, const Bytef*, rb_len_t);
 static VALUE zstream_detach_buffer(struct zstream*);
 static VALUE zstream_shift_buffer(struct zstream*, rb_len_t, VALUE);
-static void zstream_buffer_ungets(struct zstream*, const Bytef*, unsigned long);
+static void zstream_buffer_ungets(struct zstream*, const Bytef*, rb_ulen_t);
 static void zstream_buffer_ungetbyte(struct zstream*, int);
 static void zstream_append_input(struct zstream*, const Bytef*, rb_len_t);
 static void zstream_discard_input(struct zstream*, rb_len_t);
@@ -394,7 +396,7 @@ rb_zlib_version(VALUE klass)
 # define mask32(x) (x)
 #endif
 
-#if SIZEOF_LONG > SIZEOF_INT && !defined(HAVE_ZLIB_SIZE_T_FUNCS)
+#if SIZEOF_RB_LEN_T > SIZEOF_INT && !defined(HAVE_ZLIB_SIZE_T_FUNCS)
 static uLong
 checksum_long(uLong (*func)(uLong, const Bytef*, uInt), uLong sum, const Bytef *ptr, rb_len_t len)
 {
@@ -708,7 +710,7 @@ zstream_expand_buffer(struct zstream *z)
 }
 
 static void
-zstream_expand_buffer_into(struct zstream *z, unsigned long size)
+zstream_expand_buffer_into(struct zstream *z, rb_ulen_t size)
 {
     if (NIL_P(z->buf)) {
 	/* I uses rb_str_new here not rb_str_buf_new because
@@ -862,7 +864,7 @@ zstream_shift_buffer(struct zstream *z, rb_len_t len, VALUE dst)
 }
 
 static void
-zstream_buffer_ungets(struct zstream *z, const Bytef *b, unsigned long len)
+zstream_buffer_ungets(struct zstream *z, const Bytef *b, rb_ulen_t len)
 {
     char *bufptr;
     rb_len_t filled;
