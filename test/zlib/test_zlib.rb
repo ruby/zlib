@@ -216,6 +216,13 @@ if defined? Zlib
       z.close # without this, outputs `zlib(finalizer): the stream was freed prematurely.'
     end
 
+    def test_params_before_output
+      z = Zlib::Deflate.new
+      EnvUtil.suppress_warning {z.params(Zlib::BEST_COMPRESSION, Zlib::DEFAULT_STRATEGY)}
+      z << "foo"
+      assert_equal("foo", Zlib::Inflate.inflate(z.finish))
+    end
+
     def test_set_dictionary
       z = Zlib::Deflate.new
       z.set_dictionary("foo")
