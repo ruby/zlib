@@ -1080,7 +1080,7 @@ zstream_run_func(struct zstream_run_args *args)
     uInt n;
 
     int err = Z_OK;
-    while (!args->interrupt) {
+    while (1) {
         n = z->stream.avail_out;
 
         err = (int)(VALUE)rb_ensure(zstream_run_once_begin, (VALUE)args, zstream_run_once_ensure, (VALUE)args);
@@ -1166,18 +1166,6 @@ zstream_run_try(VALUE value_arg)
 
 loop:
     err = zstream_run_func(args);
-
-    /* retry if no exception is thrown */
-    if (err == Z_OK && args->interrupt) {
-       args->interrupt = 0;
-
-       /* Retry only if both avail_in > 0 (more input to process) and avail_out > 0
-        * (output buffer has space). If avail_out == 0, the buffer is full and should
-        * be consumed by the caller first. If avail_in == 0, there's nothing more to process. */
-       if (z->stream.avail_in > 0 && z->stream.avail_out > 0) {
-          goto loop;
-       }
-    }
 
     if (flush != Z_FINISH && err == Z_BUF_ERROR && z->stream.avail_out > 0) {
         z->flags |= ZSTREAM_FLAG_IN_STREAM;
