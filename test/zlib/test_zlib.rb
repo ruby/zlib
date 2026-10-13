@@ -248,6 +248,37 @@ if defined? Zlib
       assert_raise(Zlib::Error) { z << "foo" }
       assert_raise(Zlib::Error) { z.reset }
     end
+
+    # An interrupt must neither raise Zlib::BufError on a deflate call that
+    # already consumed all its input, nor stop Zlib::Deflate#finish before the
+    # stream ends.
+    def test_thread_wakeup_interrupt
+      pend 'fails' if RUBY_ENGINE == 'truffleruby'
+
+      content = SecureRandom.random_bytes(256 * 1024)
+      outputs = []
+
+      thr = Thread.new do
+        100.times do
+          z = Zlib::Deflate.new
+          outputs << (z.deflate(content) << z.finish)
+          z.close
+        end
+      end
+
+      while thr.alive?
+        begin
+          thr.wakeup
+        rescue ThreadError
+        end
+        Thread.pass
+      end
+      thr.join
+
+      outputs.each do |output|
+        assert_equal(content, Zlib::Inflate.inflate(output))
+      end
+    end
   end
 
   class TestZlibInflate < Test::Unit::TestCase
