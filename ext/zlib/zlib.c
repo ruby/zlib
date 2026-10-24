@@ -1265,6 +1265,10 @@ zstream_sync(struct zstream *z, Bytef *src, rb_len_t len)
     /* VALUE rest; */
     int err;
 
+    if (z->flags & ZSTREAM_IN_PROGRESS) {
+	rb_raise(cInProgressError, "zlib stream is in progress");
+    }
+
     if (!NIL_P(z->input)) {
 	z->stream.next_in = (Bytef*)RSTRING_PTR(z->input);
 	z->stream.avail_in = MAX_UINT(RSTRING_LEN(z->input));
