@@ -1647,6 +1647,15 @@ if defined? Zlib
       end
     end
 
+    def test_checksum_nil_with_initial_value
+      assert_equal(Zlib.crc32("", 1234), Zlib.crc32(nil, 1234))
+      assert_equal(1234, Zlib.crc32(nil, 1234))       # was 0
+      assert_equal(1234, Zlib.adler32(nil, 1234))     # was 1
+      assert_equal(Zlib.adler32("", 2**31 - 1), Zlib.adler32(nil, 2**31 - 1))
+      assert_equal(0, Zlib.crc32(nil))
+      assert_equal(1, Zlib.adler32(nil))
+    end
+
     def test_crc_table
       t = Zlib.crc_table
       assert_instance_of(Array, t)
