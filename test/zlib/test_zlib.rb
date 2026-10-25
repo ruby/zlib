@@ -1715,6 +1715,44 @@ if defined? Zlib
 
       src = %w[1f8b080000000000000].pack("H*")
       assert_raise(Zlib::GzipFile::Error){ Zlib.gunzip(src) }
+
+      src = %w[1f8b08080000000000036e616d65].pack("H*")
+      assert_raise(Zlib::GzipFile::Error){ Zlib.gunzip(src) }
+
+      src = %w[1f8b08100000000000036e616d65].pack("H*")
+      assert_raise(Zlib::GzipFile::Error){ Zlib.gunzip(src) }
+    end
+
+    def test_gunzip_orig_name_and_comment
+      [["X", nil], [nil, "Y"], ["X", "Y"], ["", ""]].each do |orig_name, comment|
+        gz = Zlib::GzipWriter.new(StringIO.new(s = "".dup))
+        gz.orig_name = orig_name if orig_name
+        gz.comment = comment if comment
+        gz.print("foo")
+        gz.finish
+        assert_equal("foo", Zlib.gunzip(s), [orig_name, comment].inspect)
+      end
+    end
+
+    def test_gunzip_corrupted_header
+      gz = Zlib::GzipWriter.new(StringIO.new(s = "".dup))
+      gz.orig_name = "X"
+      gz.comment = "Y"
+      gz.print("foo")
+      gz.finish
+      # see TestZlibGzipReader#test_corrupted_header
+      1.upto(14) do |idx|
+        assert_raise(Zlib::GzipFile::Error, idx.to_s) do
+          Zlib.gunzip(s[0, idx])
+        end
+      end
+
+      # FEXTRA cut in its length and in its data
+      %w[1f8b080400000000000304 1f8b0804000000000003040061].each do |hex|
+        assert_raise(Zlib::GzipFile::Error, hex) do
+          Zlib.gunzip([hex].pack("H*"))
+        end
+      end
     end
 
     # Zlib.gunzip input is always considered a binary string, regardless of its String#encoding.
