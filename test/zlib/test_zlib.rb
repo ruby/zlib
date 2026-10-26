@@ -1571,6 +1571,21 @@ if defined? Zlib
   end
 
   class TestZlib < Test::Unit::TestCase
+    def test_reinitialize
+      z = Zlib::Deflate.new
+      assert_raise(RuntimeError) { z.send(:initialize) }
+      z.close
+      z = Zlib::Inflate.new
+      assert_raise(RuntimeError) { z.send(:initialize) }
+      z.close
+      gz = Zlib::GzipWriter.new(StringIO.new(+""))
+      assert_raise(RuntimeError) { gz.send(:initialize, StringIO.new(+"")) }
+      gz.close
+      gz = Zlib::GzipReader.new(StringIO.new(Zlib.gzip("foo")))
+      assert_raise(RuntimeError) { gz.send(:initialize, StringIO.new(Zlib.gzip("foo"))) }
+      gz.close
+    end
+
     def test_version
       assert_instance_of(String, Zlib.zlib_version)
     end
