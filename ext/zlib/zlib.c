@@ -1282,6 +1282,10 @@ zstream_sync(struct zstream *z, Bytef *src, rb_len_t len)
     /* VALUE rest; */
     int err;
 
+    if (z->flags & ZSTREAM_IN_PROGRESS) {
+	rb_raise(cInProgressError, "zlib stream is in progress");
+    }
+
     if (!NIL_P(z->input)) {
 	err = zstream_inflate_sync(z, (Bytef*)RSTRING_PTR(z->input),
 				   RSTRING_LEN(z->input));
@@ -2355,8 +2359,11 @@ rb_inflate_addstr(VALUE obj, VALUE src)
  *
  * Inputs +string+ into the end of input buffer and skips data until a full
  * flush point can be found.  If the point is found in the buffer, this method
- * flushes the buffer and returns false.  Otherwise it returns +true+ and the
- * following data of full flush point is preserved in the buffer.
+ * returns +true+ and the following data of full flush point is preserved in
+ * the buffer.  Otherwise it flushes the buffer and returns +false+.
+ *
+ * Raises a Zlib::InProgressError exception if called while the stream is
+ * being inflated.
  */
 static VALUE
 rb_inflate_sync(VALUE obj, VALUE src)
