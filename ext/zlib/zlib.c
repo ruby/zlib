@@ -1549,8 +1549,12 @@ static VALUE
 rb_zstream_set_avail_out(VALUE obj, VALUE size)
 {
     struct zstream *z = get_zstream(obj);
+    int n = NUM2INT(size);
 
-    zstream_expand_buffer_into(z, FIX2INT(size));
+    if (n < 0) {
+	rb_raise(rb_eArgError, "negative size");
+    }
+    zstream_expand_buffer_into(z, n);
     return size;
 }
 
