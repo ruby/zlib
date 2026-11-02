@@ -1386,6 +1386,14 @@ get_zstream(VALUE obj)
     return z;
 }
 
+static void
+zstream_check_reinitialize(VALUE obj, struct zstream *z)
+{
+    if (ZSTREAM_IS_READY(z)) {
+	rb_raise(rb_eRuntimeError, "reinitializing %"PRIsVALUE, rb_obj_class(obj));
+    }
+}
+
 
 /* ------------------------------------------------------------------------- */
 
@@ -1732,6 +1740,7 @@ rb_deflate_initialize(int argc, VALUE *argv, VALUE obj)
 
     rb_scan_args(argc, argv, "04", &level, &wbits, &memlevel, &strategy);
     TypedData_Get_Struct(obj, struct zstream, &zstream_data_type, z);
+    zstream_check_reinitialize(obj, z);
 
     err = deflateInit2(&z->stream, ARG_LEVEL(level), Z_DEFLATED,
 		       ARG_WBITS(wbits), ARG_MEMLEVEL(memlevel),
@@ -2088,6 +2097,7 @@ rb_inflate_initialize(int argc, VALUE *argv, VALUE obj)
 
     rb_scan_args(argc, argv, "01", &wbits);
     TypedData_Get_Struct(obj, struct zstream, &zstream_data_type, z);
+    zstream_check_reinitialize(obj, z);
 
     err = inflateInit2(&z->stream, ARG_WBITS(wbits));
     if (err != Z_OK) {
@@ -3829,6 +3839,7 @@ rb_gzwriter_initialize(int argc, VALUE *argv, VALUE obj)
 
     rb_scan_args(argc, argv, "12", &io, &level, &strategy);
     TypedData_Get_Struct(obj, struct gzfile, &gzfile_data_type, gz);
+    zstream_check_reinitialize(obj, &gz->z);
 
     /* this is undocumented feature of zlib */
     gz->level = ARG_LEVEL(level);
@@ -4091,6 +4102,7 @@ rb_gzreader_initialize(int argc, VALUE *argv, VALUE obj)
     int err;
 
     TypedData_Get_Struct(obj, struct gzfile, &gzfile_data_type, gz);
+    zstream_check_reinitialize(obj, &gz->z);
     rb_scan_args(argc, argv, "1:", &io, &opt);
 
     /* this is undocumented feature of zlib */
