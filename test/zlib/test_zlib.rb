@@ -132,6 +132,14 @@ if defined? Zlib
       assert_equal("foobar", Zlib::Inflate.inflate(s))
     end
 
+    def test_negative_avail_out
+      z = Zlib::Inflate.new
+      assert_raise(ArgumentError) { z.avail_out = -1 }
+      assert_equal("foo" * 100, z.inflate(Zlib::Deflate.deflate("foo" * 100)))
+    ensure
+      z&.close
+    end
+
     def test_expand_buffer;
       z = Zlib::Deflate.new
       src = "baz" * 1000
