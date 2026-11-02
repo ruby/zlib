@@ -1177,6 +1177,8 @@ if defined? Zlib
           s = "".b
 
           assert_raise(ArgumentError) { f.read(-1, s) }
+          assert_raise(TypeError) { f.read(1, :buffer) }
+          assert_raise(TypeError) { f.read(nil, 1) }
 
           assert_same s, f.read(1, s)
           assert_equal "\xE3".b, s
