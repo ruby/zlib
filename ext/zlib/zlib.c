@@ -434,7 +434,9 @@ do_checksum(int argc, VALUE *argv, checksum_func func)
     }
 
     if (NIL_P(str)) {
-	sum = func(mask32(sum), Z_NULL, 0);
+	/* zlib returns the initial value for a NULL buffer, which would discard
+	 * an explicitly given running checksum; behave like an empty string */
+	sum = NIL_P(vsum) ? func(0, Z_NULL, 0) : func(mask32(sum), (const Bytef *)"", 0);
     }
     else if (rb_obj_is_kind_of(str, rb_cIO)) {
         VALUE buf;
