@@ -1171,6 +1171,12 @@ zstream_run_func(struct zstream_run_args *args)
 }
 
 static VALUE
+zstream_run_func_protect(VALUE args)
+{
+    return (VALUE)zstream_run_func((struct zstream_run_args *)args);
+}
+
+static VALUE
 zstream_run_try(VALUE value_arg)
 {
     struct zstream_run_args *args = (struct zstream_run_args *)value_arg;
@@ -1179,7 +1185,7 @@ zstream_run_try(VALUE value_arg)
     rb_len_t len = args->len;
     int flush = args->flush;
 
-    int err;
+    int err, state;
     VALUE old_input = Qnil;
 
     z->flags |= ZSTREAM_IN_PROGRESS;
@@ -1214,7 +1220,14 @@ zstream_run_try(VALUE value_arg)
     }
 
 loop:
-    err = zstream_run_func(args);
+    err = (int)rb_protect(zstream_run_func_protect, (VALUE)args, &state);
+    if (state) {
+	zstream_reset_input(z);
+	zstream_append_input(z, z->stream.next_in, z->stream.avail_in + args->rest_in);
+	z->stream.next_in = Z_NULL;
+	z->stream.avail_in = 0;
+	rb_jump_tag(state);
+    }
 
     /* retry if no exception is thrown */
     if (err == Z_OK && args->interrupt) {
