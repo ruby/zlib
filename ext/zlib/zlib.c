@@ -623,7 +623,6 @@ struct zstream_run_args {
     rb_len_t len;
     rb_len_t rest_in;  /* input after next_in + avail_in, as avail_in is a uInt */
     int flush;         /* stream flush value for inflate() or deflate() */
-    int interrupt;     /* stop processing the stream and return to ruby */
     int jump_state;    /* for buffer expansion block break or exception */
     int stream_output; /* for streaming zlib processing */
 };
@@ -1042,18 +1041,6 @@ zstream_run_once(void *_arguments)
     return (void*)error;
 }
 
-/*
- * There is no safe way to interrupt z->run->func().
- * async-signal-safe
- */
-static void
-zstream_unblock_func(void *ptr)
-{
-    struct zstream_run_args *args = (struct zstream_run_args *)ptr;
-
-    args->interrupt = 1;
-}
-
 #ifndef RB_NOGVL_OFFLOAD_SAFE
 // Default to no-op if it's not defined:
 #define RB_NOGVL_OFFLOAD_SAFE 0
@@ -1067,10 +1054,12 @@ zstream_run_once_begin(VALUE _arguments)
 
     rb_str_locktmp(z->buf);
 
+    /* There is no safe way to interrupt z->run->func(), so there is no unblock
+     * function. Ruby handles pending interrupts when each call returns. */
 #ifndef RB_NOGVL_UBF_ASYNC_SAFE
-    return (VALUE)rb_thread_call_without_gvl(zstream_run_once, (void *)arguments, zstream_unblock_func, (void *)arguments);
+    return (VALUE)rb_thread_call_without_gvl(zstream_run_once, (void *)arguments, NULL, NULL);
 #else
-    return (VALUE)rb_nogvl(zstream_run_once, (void *)arguments, zstream_unblock_func, (void *)arguments, RB_NOGVL_UBF_ASYNC_SAFE | RB_NOGVL_OFFLOAD_SAFE);
+    return (VALUE)rb_nogvl(zstream_run_once, (void *)arguments, NULL, NULL, RB_NOGVL_OFFLOAD_SAFE);
 #endif
 }
 
@@ -1251,7 +1240,6 @@ zstream_run(struct zstream *z, Bytef *src, rb_len_t len, int flush)
         .len = len,
         .rest_in = 0,
         .flush = flush,
-        .interrupt = 0,
         .jump_state = 0,
         .stream_output = !ZSTREAM_IS_GZFILE(z) && rb_block_given_p(),
     };
