@@ -1170,12 +1170,19 @@ zstream_run_try(VALUE value_arg)
 	z->stream.avail_out = 0;
     }
 
-    if (NIL_P(z->input) && len == 0) {
+    zstream_append_input(z, src, len);
+
+    /* expanding the buffer may yield the pending output, and the block
+       may exit there, so keep the input in `z->input' until then. */
+    if (z->stream.avail_out == 0) {
+	zstream_expand_buffer(z);
+    }
+
+    if (NIL_P(z->input)) {
 	z->stream.next_in = (Bytef*)"";
 	z->stream.avail_in = 0;
     }
     else {
-	zstream_append_input(z, src, len);
 	/* keep reference to `z->input' so as not to be garbage collected
 	   after zstream_reset_input() and prevent `z->stream.next_in'
 	   from dangling. */
@@ -1184,10 +1191,6 @@ zstream_run_try(VALUE value_arg)
 	z->stream.next_in = (Bytef*)RSTRING_PTR(old_input);
 	z->stream.avail_in = MAX_UINT(RSTRING_LEN(old_input));
 	args->rest_in = RSTRING_LEN(old_input) - z->stream.avail_in;
-    }
-
-    if (z->stream.avail_out == 0) {
-	zstream_expand_buffer(z);
     }
 
 loop:
