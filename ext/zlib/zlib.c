@@ -3113,7 +3113,7 @@ gzfile_read_all(struct gzfile *gz, VALUE dst)
             rb_str_resize(dst, 0);
             return dst;
         }
-	return rb_str_new(0, 0);
+	return rb_enc_str_new(0, 0, gz->enc);
     }
 
     dst = zstream_detach_buffer(&gz->z);
