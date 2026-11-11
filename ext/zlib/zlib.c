@@ -2560,6 +2560,9 @@ gzfile_free(void *p)
 	}
 	zstream_finalize(z);
     }
+    if (gz->ec) {
+	rb_econv_close(gz->ec);
+    }
     xfree(gz);
 }
 
