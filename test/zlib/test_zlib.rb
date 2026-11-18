@@ -648,6 +648,31 @@ if defined? Zlib
       assert_equal 100_000 - chunks.first.length, out.length
     end
 
+    def test_inflate_chunked_break_with_pending_output
+      # The first call leaves 16 KiB pending, which the second call yields
+      # before inflating its input.
+      src = "a" * 16_384 + "b" * 16_384
+      deflated = Zlib::Deflate.deflate(src, Zlib::NO_COMPRESSION)
+      # zlib header, stored block header, and the first 16 KiB of data
+      head = deflated.byteslice(0, 2 + 5 + 16_384)
+      rest = deflated.byteslice(head.bytesize..)
+
+      [false, true].product([:break, :raise]) do |use_buffer, exit_by|
+        opts = use_buffer ? {buffer: String.new} : {}
+        z = Zlib::Inflate.new
+        inflated = "".dup
+        z.inflate(head, **opts) { |chunk| inflated << chunk }
+        if exit_by == :break
+          z.inflate(rest, **opts) { |chunk| inflated << chunk; break }
+        else
+          assert_raise(RuntimeError) { z.inflate(rest, **opts) { |chunk| inflated << chunk; raise } }
+        end
+        assert_equal 16_384, inflated.bytesize
+        z.inflate(nil, **opts) { |chunk| inflated << chunk }
+        assert_equal src, inflated, "buffer: #{use_buffer}, #{exit_by}"
+      end
+    end
+
     def test_inflate_dictionary
       dictionary = "foo"
 
