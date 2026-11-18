@@ -600,7 +600,7 @@ struct zstream {
 #define ZSTREAM_FLAG_FINISHED   (1 << 2)
 #define ZSTREAM_FLAG_CLOSING    (1 << 3)
 #define ZSTREAM_FLAG_GZFILE     (1 << 4) /* disallows yield from expand_buffer for
-                                        gzip*/
+                                            gzip*/
 #define ZSTREAM_REUSE_BUFFER    (1 << 5)
 #define ZSTREAM_IN_PROGRESS     (1 << 6)
 #define ZSTREAM_FLAG_UNUSED     (1 << 7)
@@ -1138,7 +1138,7 @@ zstream_run_func(struct zstream_run_args *args)
         if (z->stream.avail_in == 0 && z->func == &inflate_funcs) {
             /* break here because inflate() return Z_BUF_ERROR when avail_in == 0. */
             /* but deflate() could be called with avail_in == 0 (there's hidden buffer
-                in zstream->state) */
+               in zstream->state) */
             z->flags |= ZSTREAM_FLAG_IN_STREAM;
             break;
         }
@@ -1389,7 +1389,7 @@ zstream_memsize(const void *p)
 static const rb_data_type_t zstream_data_type = {
     "zstream",
     { zstream_mark, zstream_free, zstream_memsize, },
-     0, 0, RUBY_TYPED_FREE_IMMEDIATELY
+    0, 0, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
 static VALUE
@@ -2586,7 +2586,7 @@ gzfile_memsize(const void *p)
 static const rb_data_type_t gzfile_data_type = {
     "gzfile",
     { gzfile_mark, gzfile_free, gzfile_memsize, },
-     0, 0, RUBY_TYPED_FREE_IMMEDIATELY
+    0, 0, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
 static void
@@ -4074,7 +4074,7 @@ rb_gzreader_s_zcat(int argc, VALUE *argv, VALUE klass)
     do {
         obj = rb_funcallv(klass, rb_intern("new"), argc, argv);
         if (rb_block_given_p()) {
-           rb_gzreader_each(0, 0, obj);
+            rb_gzreader_each(0, 0, obj);
         }
         else {
             if (!buf) {
