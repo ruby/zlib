@@ -227,6 +227,27 @@ if defined? Zlib
       assert_equal(true, z.closed?)
     end
 
+    def test_params_after_interrupted_deflate
+      assert_separately(%w[-rzlib], "#{<<~"begin;"}\n#{<<~'end;'}", timeout: 60)
+      begin;
+        data = Random.new(0).bytes(8 << 20)
+        z = nil
+        [0.001, 0.005, 0.01, 0.02, 0.05, 0.1].cycle(3) do |wait|
+          z = Zlib::Deflate.new(1)
+          th = Thread.new { z.deflate(data) rescue nil }
+          sleep wait
+          th.raise(RuntimeError)
+          th.join
+          break if z.total_in > 0 && z.total_in < data.bytesize
+          z = nil
+        end
+        omit "deflate was not interrupted in the middle" unless z
+        GC.start
+        EnvUtil.suppress_warning { z.params(9, Zlib::HUFFMAN_ONLY) }
+        assert_kind_of(String, z.finish)
+      end;
+    end
+
     def test_params_with_buf_error_and_pending_output
       data = Random.new(0).bytes(1000)
       z = Zlib::Deflate.new(Zlib::DEFAULT_COMPRESSION, Zlib::MAX_WBITS, 1)

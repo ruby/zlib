@@ -974,6 +974,13 @@ zstream_reset_input(struct zstream *z)
 }
 
 static void
+zstream_clear_next_in(struct zstream *z)
+{
+    z->stream.next_in = Z_NULL;
+    z->stream.avail_in = 0;
+}
+
+static void
 zstream_passthrough_input(struct zstream *z)
 {
     if (!NIL_P(z->input)) {
@@ -1161,6 +1168,12 @@ zstream_run_func(struct zstream_run_args *args)
 }
 
 static VALUE
+zstream_run_func_protect(VALUE args)
+{
+    return (VALUE)zstream_run_func((struct zstream_run_args *)args);
+}
+
+static VALUE
 zstream_run_try(VALUE value_arg)
 {
     struct zstream_run_args *args = (struct zstream_run_args *)value_arg;
@@ -1169,7 +1182,7 @@ zstream_run_try(VALUE value_arg)
     rb_len_t len = args->len;
     int flush = args->flush;
 
-    int err;
+    int err, state;
     VALUE old_input = Qnil;
 
     /* Cannot start zstream while it is in progress. */
@@ -1205,7 +1218,13 @@ zstream_run_try(VALUE value_arg)
     }
 
 loop:
-    err = zstream_run_func(args);
+    err = (int)rb_protect(zstream_run_func_protect, (VALUE)args, &state);
+    if (state) {
+	zstream_reset_input(z);
+	zstream_append_input(z, z->stream.next_in, z->stream.avail_in + args->rest_in);
+	zstream_clear_next_in(z);
+	rb_jump_tag(state);
+    }
 
     /* retry if no exception is thrown */
     if (err == Z_OK && args->interrupt) {
@@ -1245,8 +1264,7 @@ loop:
 		}
 	    }
 	}
-	z->stream.next_in = Z_NULL;
-	z->stream.avail_in = 0;
+	zstream_clear_next_in(z);
 	raise_zlib_error(err, z->stream.msg);
     }
 
@@ -1254,9 +1272,7 @@ loop:
     if (!NIL_P(old_input)) {
 	rb_str_resize(old_input, 0);
     }
-    /* the rest is in z->input now; do not leave next_in in old_input */
-    z->stream.next_in = Z_NULL;
-    z->stream.avail_in = 0;
+    zstream_clear_next_in(z);
 
     return Qnil;
 }
@@ -1303,8 +1319,6 @@ zstream_inflate_sync(struct zstream *z, Bytef *src, rb_len_t len)
 	len -= z->stream.avail_in;
 	err = inflateSync(&z->stream);
     } while (err == Z_DATA_ERROR && len > 0);
-    /* do_inflate() looks at avail_in for the input left after the sync point */
-    z->stream.avail_in = MAX_UINT(z->stream.avail_in + len);
 
     return err;
 }
@@ -1325,9 +1339,11 @@ zstream_sync(struct zstream *z, Bytef *src, rb_len_t len)
 	if (err == Z_OK) {
 	    zstream_discard_input(z, z->stream.next_in -
 				  (Bytef*)RSTRING_PTR(z->input));
+	    zstream_clear_next_in(z);
 	    zstream_append_input(z, src, len);
 	    return Qtrue;
 	}
+	zstream_clear_next_in(z);
 	zstream_reset_input(z);
 	if (err != Z_DATA_ERROR) {
 	    /* rest = rb_str_new((char*)z->stream.next_in, z->stream.avail_in); */
@@ -1340,8 +1356,10 @@ zstream_sync(struct zstream *z, Bytef *src, rb_len_t len)
     err = zstream_inflate_sync(z, src, len);
     if (err == Z_OK) {
 	zstream_append_input(z, z->stream.next_in, src + len - z->stream.next_in);
+	zstream_clear_next_in(z);
 	return Qtrue;
     }
+    zstream_clear_next_in(z);
     if (err != Z_DATA_ERROR) {
 	/* rest = rb_str_new((char*)z->stream.next_in, z->stream.avail_in); */
 	raise_zlib_error(err, z->stream.msg);
