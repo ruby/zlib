@@ -236,6 +236,15 @@ if defined? Zlib
       assert_equal(data, Zlib::Inflate.inflate(z.finish))
     end
 
+    def test_params_before_input
+      z = Zlib::Deflate.new
+      assert_nil(z.params(Zlib::BEST_SPEED, Zlib::FILTERED))
+      z << "foo"
+      assert_equal("foo", Zlib::Inflate.inflate(z.finish))
+    ensure
+      z&.close
+    end
+
     def test_params
       z = Zlib::Deflate.new
       z << "foo"

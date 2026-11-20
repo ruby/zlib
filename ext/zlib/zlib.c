@@ -1975,13 +1975,14 @@ rb_deflate_flush(int argc, VALUE *argv, VALUE obj)
 }
 
 /*
- * Document-method: Zlib::Deflate.params
+ * Document-method: Zlib::Deflate#params
  *
- * call-seq: params(level, strategy)
+ * call-seq: params(level, strategy) -> nil
  *
  * Changes the parameters of the deflate stream to allow changes between
  * different types of data that require different types of compression.  Any
- * unprocessed data is flushed before changing the params.
+ * unprocessed data is flushed first. You can also call this method before
+ * supplying any input.
  *
  * See Zlib::Deflate.new for a description of +level+ and +strategy+.
  *
@@ -1997,6 +1998,10 @@ rb_deflate_params(VALUE obj, VALUE v_level, VALUE v_strategy)
 
     level = ARG_LEVEL(v_level);
     strategy = ARG_STRATEGY(v_strategy);
+
+    if (NIL_P(z->buf)) {
+        zstream_expand_buffer(z);
+    }
 
     n = z->stream.avail_out;
     err = deflateParams(&z->stream, level, strategy);
