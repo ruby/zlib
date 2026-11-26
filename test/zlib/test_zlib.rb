@@ -585,8 +585,9 @@ if defined? Zlib
     end
 
     def test_inflate_buffer_replaced_between_calls
-      # Output pending in the previous buffer is carried over when another
-      # buffer (or no buffer) is given for the next call.
+      # Output pending in the previous buffer, including the internal one used
+      # without buffer:, is carried over when another buffer (or no buffer) is
+      # given for the next call.
       src = "0" * 100_000
       deflated = Zlib::Deflate.deflate(src)
 
@@ -606,6 +607,27 @@ if defined? Zlib
       half = deflated.bytesize / 2
       z.inflate(deflated.byteslice(0, half), buffer: buf) { |chunk| inflated << chunk }
       z.inflate(deflated.byteslice(half..)) { |chunk| inflated << chunk }
+      inflated << z.finish
+      assert_equal src, inflated
+
+      # position-dependent data, so that reordered output is caught
+      src = Random.new(0).bytes(100_000)
+      deflated = Zlib::Deflate.deflate(src)
+      half = deflated.bytesize / 2
+
+      # block form, buffer: given mid-stream
+      z = Zlib::Inflate.new
+      buf = String.new(capacity: 1 << 14)
+      inflated = "".dup
+      z.inflate(deflated.byteslice(0, half)) { |chunk| inflated << chunk }
+      z.inflate(deflated.byteslice(half..), buffer: buf) { |chunk| inflated << chunk }
+      z.inflate(nil, buffer: buf) { |chunk| inflated << chunk }
+      assert_equal src, inflated
+
+      # buffer: given after #<<
+      z = Zlib::Inflate.new
+      z << deflated.byteslice(0, half)
+      inflated = z.inflate(deflated.byteslice(half..), buffer: String.new).dup
       inflated << z.finish
       assert_equal src, inflated
 
@@ -635,6 +657,26 @@ if defined? Zlib
       rest = z.finish
       assert_instance_of String, rest
       assert_equal src, inflated + rest
+    end
+
+    def test_inflate_buffer_after_finished
+      src = "0" * 100_000
+      deflated = Zlib::Deflate.deflate(src)
+
+      z = Zlib::Inflate.new
+      buf = String.new
+      assert_equal src, z.inflate(deflated, buffer: buf)
+      assert_same buf, z.inflate("tail", buffer: buf)
+      assert_equal "tail", buf
+      assert_equal "", z.inflate(nil, buffer: buf)
+
+      z = Zlib::Inflate.new
+      buf = String.new
+      inflated = "".dup
+      z.inflate(deflated, buffer: buf) { |chunk| inflated << chunk }
+      z.inflate("tail", buffer: buf) { |chunk| inflated << chunk }
+      z.inflate(nil, buffer: buf) { |chunk| inflated << chunk }
+      assert_equal src + "tail", inflated
     end
 
     def test_inflate_buffer_dropped_while_handling_need_dict
