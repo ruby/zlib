@@ -39,6 +39,17 @@ if defined? Zlib
       assert_equal("foobaz", Zlib::Inflate.inflate(s2))
     end
 
+    def test_dup_with_pending_output
+      s = Random.new(0).bytes(50_000)
+      z1 = Zlib::Deflate.new
+      z1 << s
+      z2 = z1.dup
+      z1 << "bar"
+      z2 << "baz"
+      assert_equal(s + "bar", Zlib::Inflate.inflate(z1.finish))
+      assert_equal(s + "baz", Zlib::Inflate.inflate(z2.finish))
+    end
+
     def test_deflate
       s = Zlib::Deflate.deflate("foo")
       assert_equal("foo", Zlib::Inflate.inflate(s))
@@ -102,6 +113,38 @@ if defined? Zlib
       assert_equal input, original
     end
 
+    def test_params_after_chunked_break
+      chunks = []
+      r = Random.new 0
+
+      # small enough that params can flush what zlib holds without Z_BUF_ERROR
+      z = Zlib::Deflate.new(Zlib::DEFAULT_COMPRESSION, 9, 1)
+
+      input = r.bytes(20000)
+      z.deflate(input) do |chunk|
+        chunks << chunk
+        break
+      end
+
+      assert_operator 0, :<, z.avail_in
+
+      z.params(Zlib::BEST_SPEED, Zlib::FILTERED)
+      chunks << z.finish
+
+      assert_equal input, Zlib.inflate(chunks.join)
+    end
+
+    def test_params_after_failed_deflate
+      z = Zlib::Deflate.new
+      z << "foo"
+      assert_raise(Zlib::StreamError) { z.deflate("bar", 10000) }
+      assert_equal "bar", z.flush_next_in
+
+      z.params(Zlib::BEST_SPEED, Zlib::FILTERED)
+
+      assert_equal "foo", Zlib::Inflate.inflate(z.finish)
+    end
+
     def test_addstr
       z = Zlib::Deflate.new
       z << "foo"
@@ -119,6 +162,16 @@ if defined? Zlib
       s << z.flush_next_out
       s << z.deflate("qux", Zlib::FINISH)
       assert_equal("foobarbazqux", Zlib::Inflate.inflate(s))
+    end
+
+    def test_flush_twice
+      z = Zlib::Deflate.new
+      s = z.deflate("foo", Zlib::SYNC_FLUSH)
+      s << z.flush << z.flush
+      s << z.flush(Zlib::FULL_FLUSH) << z.flush(Zlib::SYNC_FLUSH)
+      s << z.deflate("", Zlib::SYNC_FLUSH)
+      s << z.finish
+      assert_equal("foo", Zlib::Inflate.inflate(s))
     end
 
     def test_avail
@@ -185,6 +238,46 @@ if defined? Zlib
       assert_equal(true, z.closed?)
     end
 
+    def test_params_with_raising_warning
+      data = Random.new(0).bytes(16_500)
+      z = Zlib::Deflate.new
+      s = z.deflate(data)
+      z.avail_out = 1
+      stderr = Object.new
+      def stderr.write(*) raise IOError end
+      begin
+        verbose, $VERBOSE = $VERBOSE, true
+        orig_stderr, $stderr = $stderr, stderr
+        assert_raise(IOError) {z.params(Zlib::BEST_SPEED, Zlib::FILTERED)}
+      ensure
+        $stderr = orig_stderr
+        $VERBOSE = verbose
+      end
+      s << z.finish
+      assert_equal(data, Zlib::Inflate.inflate(s))
+    end
+
+    def test_params_with_block
+      data = Random.new(0).bytes(16_500)
+      z = Zlib::Deflate.new
+      s = z.deflate(data)
+      z.avail_out = 1
+      chunks = []
+      EnvUtil.suppress_warning {z.params(Zlib::BEST_SPEED, Zlib::FILTERED) {|c| chunks << c}}
+      assert_not_empty(chunks)
+      s << chunks.join << z.finish
+      assert_equal(data, Zlib::Inflate.inflate(s))
+    end
+
+    def test_params_with_buf_error_and_pending_output
+      data = Random.new(0).bytes(1000)
+      z = Zlib::Deflate.new(Zlib::DEFAULT_COMPRESSION, Zlib::MAX_WBITS, 1)
+      z << data
+      z.avail_out = 10
+      EnvUtil.suppress_warning {z.params(Zlib::BEST_SPEED, Zlib::DEFAULT_STRATEGY)}
+      assert_equal(data, Zlib::Inflate.inflate(z.finish))
+    end
+
     def test_params
       z = Zlib::Deflate.new
       z << "foo"
@@ -214,6 +307,20 @@ if defined? Zlib
       z = Zlib::Deflate.new
       assert_raise(Zlib::StreamError) { z.params(10000, 10000) }
       z.close # without this, outputs `zlib(finalizer): the stream was freed prematurely.'
+    end
+
+    def test_params_without_output_buffer
+      z = Zlib::Deflate.new
+      z.params(Zlib::BEST_SPEED, Zlib::DEFAULT_STRATEGY)
+      z << "foo"
+      assert_equal("foo", Zlib::Inflate.inflate(z.finish))
+
+      z = Zlib::Deflate.new
+      z << "foo"
+      s = z.flush_next_out
+      z.params(Zlib::BEST_COMPRESSION, Zlib::FILTERED)
+      z << "bar"
+      assert_equal("foobar", Zlib::Inflate.inflate(s + z.finish))
     end
 
     def test_set_dictionary
@@ -264,6 +371,11 @@ if defined? Zlib
       z = Zlib::Inflate.new
       z << s << nil
       assert_equal("foo", z.finish)
+    end
+
+    def test_avail_out_negative
+      z = Zlib::Inflate.new
+      assert_raise_with_message(ArgumentError, "negative size") { z.avail_out = -1 }
     end
 
     def test_add_dictionary
@@ -473,8 +585,9 @@ if defined? Zlib
     end
 
     def test_inflate_buffer_replaced_between_calls
-      # Output pending in the previous buffer is carried over when another
-      # buffer (or no buffer) is given for the next call.
+      # Output pending in the previous buffer, including the internal one used
+      # without buffer:, is carried over when another buffer (or no buffer) is
+      # given for the next call.
       src = "0" * 100_000
       deflated = Zlib::Deflate.deflate(src)
 
@@ -494,6 +607,27 @@ if defined? Zlib
       half = deflated.bytesize / 2
       z.inflate(deflated.byteslice(0, half), buffer: buf) { |chunk| inflated << chunk }
       z.inflate(deflated.byteslice(half..)) { |chunk| inflated << chunk }
+      inflated << z.finish
+      assert_equal src, inflated
+
+      # position-dependent data, so that reordered output is caught
+      src = Random.new(0).bytes(100_000)
+      deflated = Zlib::Deflate.deflate(src)
+      half = deflated.bytesize / 2
+
+      # block form, buffer: given mid-stream
+      z = Zlib::Inflate.new
+      buf = String.new(capacity: 1 << 14)
+      inflated = "".dup
+      z.inflate(deflated.byteslice(0, half)) { |chunk| inflated << chunk }
+      z.inflate(deflated.byteslice(half..), buffer: buf) { |chunk| inflated << chunk }
+      z.inflate(nil, buffer: buf) { |chunk| inflated << chunk }
+      assert_equal src, inflated
+
+      # buffer: given after #<<
+      z = Zlib::Inflate.new
+      z << deflated.byteslice(0, half)
+      inflated = z.inflate(deflated.byteslice(half..), buffer: String.new).dup
       inflated << z.finish
       assert_equal src, inflated
 
@@ -523,6 +657,26 @@ if defined? Zlib
       rest = z.finish
       assert_instance_of String, rest
       assert_equal src, inflated + rest
+    end
+
+    def test_inflate_buffer_after_finished
+      src = "0" * 100_000
+      deflated = Zlib::Deflate.deflate(src)
+
+      z = Zlib::Inflate.new
+      buf = String.new
+      assert_equal src, z.inflate(deflated, buffer: buf)
+      assert_same buf, z.inflate("tail", buffer: buf)
+      assert_equal "tail", buf
+      assert_equal "", z.inflate(nil, buffer: buf)
+
+      z = Zlib::Inflate.new
+      buf = String.new
+      inflated = "".dup
+      z.inflate(deflated, buffer: buf) { |chunk| inflated << chunk }
+      z.inflate("tail", buffer: buf) { |chunk| inflated << chunk }
+      z.inflate(nil, buffer: buf) { |chunk| inflated << chunk }
+      assert_equal src + "tail", inflated
     end
 
     def test_inflate_buffer_dropped_while_handling_need_dict
@@ -572,6 +726,35 @@ if defined? Zlib
       assert_equal "A" * 12_000, z.inflate("", buffer: buf)
     end
 
+    def test_inflate_buffer_locked_by_another_thread
+      omit 'IO#read does not lock the buffer' if RUBY_ENGINE == 'truffleruby'
+
+      dict = "dictionary-" * 4
+      d = Zlib::Deflate.new
+      d.set_dictionary(dict)
+      deflated = d.deflate("A" * 12_000, Zlib::FINISH)
+
+      # The buffer is kept across NeedDict, so the retry locks it without
+      # modifying it first. It is long enough that the first call keeps its
+      # capacity, and it gets a few bytes so that IO#read up to Ruby 3.1
+      # does not resize it.
+      z = Zlib::Inflate.new
+      buf = "\0".b * (1 << 15)
+      assert_raise(Zlib::NeedDict) { z.inflate(deflated, buffer: buf) }
+      z.set_dictionary(dict)
+      buf << "...."
+
+      IO.pipe do |r, w|
+        reader = Thread.new { r.read(3, buf) }
+        Thread.pass until reader.stop?
+        assert_raise(RuntimeError) { z.inflate("", buffer: buf) }
+        w.write("foo")
+        assert_equal "foo", reader.value
+      end
+      buf.clear
+      assert_equal "A" * 12_000, z.inflate("", buffer: buf)
+    end
+
     def test_inflate_chunked_break
       # zeros = Zlib::Deflate.deflate("0" * 100_000)
       zeros = "x\234\355\3011\001\000\000\000\302\240J\353\237\316\032\036@" \
@@ -597,6 +780,31 @@ if defined? Zlib
       assert_equal 100_000 - chunks.first.length, out.length
     end
 
+    def test_inflate_chunked_break_with_pending_output
+      # The first call leaves 16 KiB pending, which the second call yields
+      # before inflating its input.
+      src = "a" * 16_384 + "b" * 16_384
+      deflated = Zlib::Deflate.deflate(src, Zlib::NO_COMPRESSION)
+      # zlib header, stored block header, and the first 16 KiB of data
+      head = deflated.byteslice(0, 2 + 5 + 16_384)
+      rest = deflated.byteslice(head.bytesize..)
+
+      [false, true].product([:break, :raise]) do |use_buffer, exit_by|
+        opts = use_buffer ? {buffer: String.new} : {}
+        z = Zlib::Inflate.new
+        inflated = "".dup
+        z.inflate(head, **opts) { |chunk| inflated << chunk }
+        if exit_by == :break
+          z.inflate(rest, **opts) { |chunk| inflated << chunk; break }
+        else
+          assert_raise(RuntimeError) { z.inflate(rest, **opts) { |chunk| inflated << chunk; raise } }
+        end
+        assert_equal 16_384, inflated.bytesize
+        z.inflate(nil, **opts) { |chunk| inflated << chunk }
+        assert_equal src, inflated, "buffer: #{use_buffer}, #{exit_by}"
+      end
+    end
+
     def test_inflate_dictionary
       dictionary = "foo"
 
@@ -618,6 +826,24 @@ if defined? Zlib
       end
 
       assert_equal "foofoofoo", out
+    end
+
+    def test_inflate_empty_after_chunked_break
+      chunks = []
+      input = Random.new(0).bytes(20000)
+
+      z = Zlib::Inflate.new
+
+      z.inflate(Zlib.deflate(input)) do |chunk|
+        chunks << chunk
+        break
+      end
+
+      assert_operator 0, :<, z.avail_in
+
+      chunks << z.inflate("")
+
+      assert_equal input, chunks.join
     end
 
     def test_sync
@@ -717,6 +943,17 @@ if defined? Zlib
       zd&.close
     end
 
+    def test_in_progress_error_does_not_end_in_progress
+      zd = Zlib::Deflate.new
+      s = Random.new(0).bytes(100_000)
+      zd.deflate(s, Zlib::FINISH) do
+        assert_raise(Zlib::InProgressError) { zd.flush }
+        assert_raise(Zlib::InProgressError) { zd << s }
+        break
+      end
+      zd.finish
+    end
+
     def test_recursive_inflate
       original_gc_stress = GC.stress
       GC.stress = true
@@ -758,6 +995,34 @@ if defined? Zlib
 
         results = File.open(t.path, 'rb') do |f|
           Zlib::GzipReader.zcat(f)
+        end
+        assert_equal("foobar", results)
+      }
+    end
+
+    def test_gzip_reader_zcat_with_options
+      Tempfile.create("test_zlib_gzip_file_to_io") {|t|
+        t.binmode
+        gz = Zlib::GzipWriter.new(t)
+        gz.print("foo")
+        gz.close
+        File.open(t.path, 'ab') do |f|
+          gz = Zlib::GzipWriter.new(f)
+          gz.print("bar")
+          gz.close
+        end
+
+        results = []
+        File.open(t.path, 'rb') do |f|
+          Zlib::GzipReader.zcat(f, external_encoding: Encoding::UTF_8) do |str|
+            results << str
+          end
+        end
+        assert_equal(["foo", "bar"], results)
+        assert_equal([Encoding::UTF_8, Encoding::UTF_8], results.map(&:encoding))
+
+        results = File.open(t.path, 'rb') do |f|
+          Zlib::GzipReader.zcat(f, external_encoding: Encoding::UTF_8)
         end
         assert_equal("foobar", results)
       }
@@ -1000,6 +1265,19 @@ if defined? Zlib
       assert_equal("", Zlib::GzipReader.new(StringIO.new(D0)).read(0))
     end
 
+    def test_gets_separator_modified_by_io
+      rs = "-" * 1000
+      src = StringIO.new(Zlib.gzip(Random.new(0).bytes(200_000).tr("-", "x") + rs))
+      n = 0
+      io = Object.new
+      io.define_singleton_method(:readpartial) do |len, buf = nil|
+        (rs.clear << "-" * 1000) if (n += 1) == 300
+        src.readpartial([len, 100].min, *buf)
+      end
+      gz = Zlib::GzipReader.new(io)
+      assert_raise_with_message(RuntimeError, "rs modified") { gz.gets(rs) }
+    end
+
     def test_ungetc
       s = "".dup
       w = Zlib::GzipWriter.new(StringIO.new(s))
@@ -1194,6 +1472,31 @@ if defined? Zlib
       }
     end
 
+    def test_read_non_string_outbuf
+      gz = Zlib::GzipReader.new(StringIO.new(Zlib.gzip("foo")))
+      assert_raise(TypeError) { gz.read(1, []) }
+      assert_raise(TypeError) { gz.read(nil, Object.new) }
+    end
+
+    def test_read_all_with_outbuf
+      ["foo", Random.new(0).bytes(20000)].each do |data|
+        gzdata = Zlib.gzip(data)
+        expected = Zlib::GzipReader.wrap(StringIO.new(gzdata), &:read)
+        Zlib::GzipReader.wrap(StringIO.new(gzdata)) do |f|
+          assert_raise(FrozenError) { f.read(nil, "x".freeze) }
+
+          s = "x".b
+          assert_same s, f.read(nil, s)
+          assert_equal expected, s
+
+          s = "x".b
+          assert_same s, f.read(nil, s)
+          assert_equal "", s
+          assert_equal f.external_encoding, s.encoding
+        end
+      end
+    end
+
     def test_readpartial
       Tempfile.create("test_zlib_gzip_reader_readpartial") {|t|
         t.close
@@ -1319,6 +1622,19 @@ if defined? Zlib
       }
     end
 
+    def test_gets_limit_shorter_than_separator
+      gz = Zlib::GzipReader.new(StringIO.new(Zlib.gzip("abcd")))
+      assert_equal("a", gz.gets("xyz", 1))
+      assert_equal("bc", gz.gets("xyz", 2))
+      assert_equal("d", gz.gets("xyz", 2))
+      assert_nil(gz.gets("xyz", 2))
+
+      gz = Zlib::GzipReader.new(StringIO.new(Zlib.gzip("ab")))
+      assert_equal("a", gz.gets("xyz", 1))
+      assert_equal("b", gz.gets("xyz", 1))
+      assert_nil(gz.gets("xyz", 1))
+    end
+
     def test_readline
       Tempfile.create("test_zlib_gzip_reader_readline") {|t|
         t.close
@@ -1376,6 +1692,20 @@ if defined? Zlib
       assert_equal(Encoding::ISO_8859_1, r.external_encoding)
     end
 
+    def test_gets_separator_inside_multibyte_char
+      pend "rb_io_extract_encoding_option ignores the encoding options on TruffleRuby" if RUBY_ENGINE == 'truffleruby'
+      # In Shift_JIS the second byte of a character can be an ASCII byte such
+      # as "@"; a separator must only match on a character boundary.
+      content = "\x81\x40?\x81\x40@".b
+      r = Zlib::GzipReader.new(StringIO.new(Zlib.gzip(content)), external_encoding: "Shift_JIS")
+      assert_equal(content.dup.force_encoding("Shift_JIS"), r.gets("@"))
+      assert_nil(r.gets("@"))
+      r = Zlib::GzipReader.new(StringIO.new(Zlib.gzip(content)), external_encoding: "Shift_JIS")
+      assert_equal("\x81\x40?".b.force_encoding("Shift_JIS"), r.gets("?"))
+      assert_equal("\x81\x40@".b.force_encoding("Shift_JIS"), r.gets("?"))
+      assert_nil(r.gets("?"))
+    end
+
     def test_corrupted_header
       gz = Zlib::GzipWriter.new(StringIO.new(s = "".dup))
       gz.orig_name = "X"
@@ -1407,6 +1737,20 @@ if defined? Zlib
         assert_equal(Encoding::ASCII_8BIT, read_size.encoding)
         assert_equal(content, read_size)
       }
+    end
+
+    def test_read_encoding_at_eof
+      gz = Zlib.gzip("foo")
+      Zlib::GzipReader.wrap(StringIO.new(gz), external_encoding: "EUC-JP") do |f|
+        enc = f.read.encoding
+        s = f.read
+        assert_equal("", s)
+        assert_equal(enc, s.encoding)
+      end
+      Zlib::GzipReader.wrap(StringIO.new(gz), external_encoding: "Shift_JIS", internal_encoding: "UTF-8") do |f|
+        f.read
+        assert_equal(Encoding::UTF_8, f.read.encoding)
+      end
     end
 
     def test_double_close
@@ -1542,6 +1886,22 @@ if defined? Zlib
         Zlib::GzipWriter.open(t.path) {|gz| gz.puts("foo") }
         assert_equal("foo\n", Zlib::GzipReader.open(t.path) {|gz| gz.read })
       }
+    end
+
+    def test_flush_twice
+      io = StringIO.new("".b)
+      Zlib::GzipWriter.wrap(io) do |gz|
+        gz.write("a")
+        gz.flush
+        gz.flush
+        gz.flush(Zlib::FULL_FLUSH)
+        gz.flush(Zlib::SYNC_FLUSH)
+        gz.sync = true
+        gz.write("")
+        gz.write("")
+        gz.write("b")
+      end
+      assert_equal("ab", Zlib.gunzip(io.string))
     end
 
     def test_writer_wrap
@@ -1789,6 +2149,16 @@ if defined? Zlib
       d = Zlib.gzip("data")
       {#
         10_000.times {Zlib.gunzip(d)}
+      };
+    end
+
+    def test_gzip_reader_encoding_conversion_no_memory_leak
+      assert_no_memory_leak(%W[-r#{LOADED_ZLIB} -rstringio], "#{<<~"{#"}", "#{<<~'};'}", rss: true)
+      d = Zlib.gzip("data")
+      opts = {external_encoding: "Shift_JIS", internal_encoding: "UTF-8"}
+      10_000.times {Zlib::GzipReader.new(StringIO.new(d), **opts).close}
+      {#
+        20_000.times {Zlib::GzipReader.new(StringIO.new(d), **opts).close}
       };
     end
 
