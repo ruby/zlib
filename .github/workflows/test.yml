@@ -19,7 +19,9 @@ jobs:
         ruby: ${{ fromJson(needs.ruby-versions.outputs.versions) }}
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         include:
-          - ruby: mswin
+          - ruby: mswin-head
+            os: windows-latest
+          - ruby: mswin-4.0
             os: windows-latest
           - ruby: mingw
             os: windows-latest
